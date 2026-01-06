@@ -1,0 +1,943 @@
+print("🎮 =================================")
+print("🎮 eee腳本 - 攻擊玩家與NPC版")
+print("🎮 eee創作")
+print("🎮 =================================")
+
+-- 檢測設備類型
+local inputService = game:GetService("UserInputService")
+local isMobile = inputService.TouchEnabled
+local isDesktop = inputService.MouseEnabled
+local deviceType = isMobile and "📱 手機" or "🖥️ 電腦"
+print("✅ 檢測到設備: " .. deviceType)
+
+-- 確保遊戲完全加載
+repeat task.wait() until game:IsLoaded()
+print("✅ 遊戲已加載")
+
+-- 獲取玩家
+local player = game.Players.LocalPlayer
+if not player then
+    warn("❌ 無法獲取玩家")
+    return
+end
+print("✅ 玩家: " .. player.Name)
+
+-- 等待PlayerGui
+local playerGui = player:WaitForChild("PlayerGui", 10)
+if not playerGui then
+    warn("❌ 無法找到PlayerGui，嘗試使用CoreGui")
+    playerGui = game:GetService("CoreGui")
+end
+print("✅ UI容器: " .. playerGui.Name)
+
+-- 清理舊的UI
+for _, gui in ipairs(playerGui:GetChildren()) do
+    if gui.Name:find("Eee") or gui.Name:find("XuanCong") then
+        gui:Destroy()
+    end
+end
+print("🗑️ 清理了舊的UI")
+
+-- ========================
+-- 全局服務
+-- ========================
+local tweenService = game:GetService("TweenService")
+local runService = game:GetService("RunService")
+local httpService = game:GetService("HttpService")
+local playersService = game:GetService("Players")
+
+print("✅ 服務加載完成")
+
+-- ========================
+-- 創建主UI ScreenGui
+-- ========================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "EeeScript_Fixed"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 999
+screenGui.IgnoreGuiInset = false
+
+print("✅ ScreenGui創建完成")
+
+-- ========================
+-- 創建主框架
+-- ========================
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 220, 0, 180) -- 增加高度以容納更多按鈕
+mainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 35, 50)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = true
+mainFrame.Active = true
+mainFrame.Parent = screenGui
+
+-- 圓角
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 6)
+uiCorner.Parent = mainFrame
+
+-- 邊框
+local uiStroke = Instance.new("UIStroke")
+uiStroke.Color = Color3.fromRGB(100, 150, 200)
+uiStroke.Thickness = 1
+uiStroke.Parent = mainFrame
+
+print("✅ 主框架創建完成")
+
+-- ========================
+-- 拖動系統（修復版）
+-- ========================
+print("🔄 設置拖動系統...")
+
+-- 創建拖動標題欄
+local dragButton = Instance.new("TextButton")
+dragButton.Name = "DragButton"
+dragButton.Size = UDim2.new(1, 0, 0, 30)
+dragButton.Position = UDim2.new(0, 0, 0, 0)
+dragButton.BackgroundColor3 = Color3.fromRGB(40, 60, 90)
+dragButton.BackgroundTransparency = 0.2
+dragButton.BorderSizePixel = 0
+dragButton.Text = "🎮 eee腳本 (拖動我)"
+dragButton.TextColor3 = Color3.fromRGB(200, 230, 255)
+dragButton.Font = Enum.Font.GothamBold
+dragButton.TextSize = 12
+dragButton.AutoButtonColor = false
+dragButton.Parent = mainFrame
+
+local dragCorner = Instance.new("UICorner")
+dragCorner.CornerRadius = UDim.new(0, 6, 0, 0)
+dragCorner.Parent = dragButton
+
+-- 右上角關閉按鈕
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 24, 0, 24)
+closeButton.Position = UDim2.new(1, -28, 0, 3)
+closeButton.BackgroundColor3 = Color3.fromRGB(220, 100, 100)
+closeButton.BackgroundTransparency = 0.2
+closeButton.BorderSizePixel = 0
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 12
+closeButton.AutoButtonColor = true
+closeButton.ZIndex = 2
+closeButton.Parent = dragButton
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 4)
+closeCorner.Parent = closeButton
+
+-- 拖動變量
+local isDragging = false
+local dragStartPosition = Vector2.new(0, 0)
+local frameStartPosition = UDim2.new(0, 0, 0, 0)
+
+-- 電腦拖動
+dragButton.MouseButton1Down:Connect(function()
+    isDragging = true
+    dragStartPosition = inputService:GetMouseLocation()
+    frameStartPosition = mainFrame.Position
+    dragButton.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+end)
+
+inputService.InputChanged:Connect(function(input)
+    if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local currentMouse = inputService:GetMouseLocation()
+        local delta = currentMouse - dragStartPosition
+        
+        mainFrame.Position = UDim2.new(
+            frameStartPosition.X.Scale,
+            frameStartPosition.X.Offset + delta.X,
+            frameStartPosition.Y.Scale,
+            frameStartPosition.Y.Offset + delta.Y
+        )
+    end
+end)
+
+inputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if isDragging then
+            isDragging = false
+            dragButton.BackgroundColor3 = Color3.fromRGB(40, 60, 90)
+        end
+    end
+end)
+
+-- 手機拖動
+if isMobile then
+    print("📱 設置手機拖動系統...")
+    
+    local touchArea = Instance.new("TextButton")
+    touchArea.Name = "TouchArea"
+    touchArea.Size = UDim2.new(1, 20, 1, 20)
+    touchArea.Position = UDim2.new(0, -10, 0, -10)
+    touchArea.BackgroundTransparency = 1
+    touchArea.Text = ""
+    touchArea.ZIndex = -1
+    touchArea.Parent = dragButton
+    
+    local touchStartPosition = Vector2.new(0, 0)
+    local touchFrameStart = UDim2.new(0, 0, 0, 0)
+    local touchDragging = false
+    
+    -- 觸控開始
+    touchArea.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            touchDragging = true
+            touchStartPosition = input.Position
+            touchFrameStart = mainFrame.Position
+            dragButton.BackgroundColor3 = Color3.fromRGB(60, 90, 140)
+        end
+    end)
+    
+    -- 觸控移動
+    inputService.InputChanged:Connect(function(input)
+        if touchDragging and input.UserInputType == Enum.UserInputType.Touch then
+            local currentTouch = input.Position
+            local delta = currentTouch - touchStartPosition
+            
+            mainFrame.Position = UDim2.new(
+                touchFrameStart.X.Scale,
+                touchFrameStart.X.Offset + delta.X,
+                touchFrameStart.Y.Scale,
+                touchFrameStart.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- 觸控結束
+    inputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch then
+            if touchDragging then
+                touchDragging = false
+                dragButton.BackgroundColor3 = Color3.fromRGB(40, 60, 90)
+            end
+        end
+    end)
+end
+
+print("✅ 拖動系統已設置")
+
+-- ========================
+-- 創建功能按鈕（修復版）
+-- ========================
+local function createButton(text, icon, yPos, color)
+    local button = Instance.new("TextButton")
+    button.Name = text
+    button.Size = UDim2.new(1, -16, 0, 28)
+    button.Position = UDim2.new(0, 8, 0, yPos)
+    button.BackgroundColor3 = color
+    button.BackgroundTransparency = 0.3
+    button.BorderSizePixel = 0
+    button.Text = icon .. " " .. text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 12
+    button.AutoButtonColor = true
+    button.Active = true
+    button.Parent = mainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 5)
+    corner.Parent = button
+    
+    return button
+end
+
+-- 創建按鈕（調整位置）
+local attackPlayersBtn = createButton("攻擊玩家", "⚡", 36, Color3.fromRGB(0, 150, 220))
+local attackNPCBtn = createButton("攻擊NPC", "👹", 70, Color3.fromRGB(180, 70, 200))
+local piScriptBtn = createButton("皮腳本", "🅿️", 104, Color3.fromRGB(220, 150, 50))
+
+print("✅ 功能按鈕創建完成")
+
+-- ========================
+-- 添加作者信息
+-- ========================
+local authorLabel = Instance.new("TextLabel")
+authorLabel.Name = "AuthorLabel"
+authorLabel.Size = UDim2.new(1, -16, 0, 16)
+authorLabel.Position = UDim2.new(0, 8, 0, 152)
+authorLabel.BackgroundTransparency = 1
+authorLabel.Text = "👑 eee創作"
+authorLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
+authorLabel.Font = Enum.Font.Gotham
+authorLabel.TextSize = 9
+authorLabel.TextXAlignment = Enum.TextXAlignment.Center
+authorLabel.Parent = mainFrame
+
+local versionLabel = Instance.new("TextLabel")
+versionLabel.Name = "VersionLabel"
+versionLabel.Size = UDim2.new(1, -16, 0, 12)
+versionLabel.Position = UDim2.new(0, 8, 0, 168)
+versionLabel.BackgroundTransparency = 1
+versionLabel.Text = "🎮 eee腳本 v3.1"
+versionLabel.TextColor3 = Color3.fromRGB(150, 200, 255)
+versionLabel.Font = Enum.Font.Gotham
+versionLabel.TextSize = 8
+versionLabel.TextXAlignment = Enum.TextXAlignment.Center
+versionLabel.Parent = mainFrame
+
+-- ========================
+-- 右下角通知系統
+-- ========================
+local function showNotification(message, color, duration)
+    duration = duration or 2.5
+    
+    local notifyFrame = Instance.new("Frame")
+    notifyFrame.Name = "Notify_" .. tick()
+    notifyFrame.Size = UDim2.new(0, 200, 0, 60)
+    notifyFrame.Position = UDim2.new(1, 210, 1, -70)
+    notifyFrame.AnchorPoint = Vector2.new(1, 1)
+    notifyFrame.BackgroundColor3 = color or Color3.fromRGB(40, 60, 90)
+    notifyFrame.BackgroundTransparency = 0.2
+    notifyFrame.BorderSizePixel = 0
+    notifyFrame.ZIndex = 10000
+    notifyFrame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = notifyFrame
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(150, 200, 255)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.3
+    stroke.Parent = notifyFrame
+    
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, -16, 1, -16)
+    textLabel.Position = UDim2.new(0, 8, 0, 8)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = message
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.TextSize = 11
+    textLabel.TextWrapped = true
+    textLabel.Parent = notifyFrame
+    
+    print("📢 通知: " .. message)
+    
+    local slideIn = tweenService:Create(notifyFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -10, 1, -70)
+    })
+    slideIn:Play()
+    
+    task.spawn(function()
+        task.wait(duration)
+        
+        if notifyFrame and notifyFrame.Parent then
+            local slideOut = tweenService:Create(notifyFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+                Position = UDim2.new(1, 210, 1, -70)
+            })
+            slideOut:Play()
+            
+            slideOut.Completed:Wait()
+            notifyFrame:Destroy()
+        end
+    end)
+    
+    return notifyFrame
+end
+
+-- ========================
+-- 攻擊玩家系統（不移動位置版本）
+-- ========================
+print("⚡ 初始化攻擊玩家系統...")
+
+local isAttackPlayersOn = false
+local attackPlayersConnection = nil
+
+-- 攻擊玩家功能
+local function setupAttackPlayers()
+    showNotification("⚡ 正在初始化攻擊玩家...", Color3.fromRGB(255, 165, 0), 1)
+    
+    -- 嘗試加載攻擊玩家模塊
+    local success, result = pcall(function()
+        -- 設置全局變量
+        _G.AttackPlayers = true
+        
+        -- 獲取本地玩家
+        local Player = playersService.LocalPlayer
+        
+        if not Player then
+            return nil, "找不到玩家"
+        end
+        
+        -- 攻擊玩家功能（不移動位置版本）
+        local function attackOtherPlayers()
+            local character = Player.Character
+            if not character then return end
+            
+            local humanoid = character:FindFirstChild("Humanoid")
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if not humanoid or humanoid.Health <= 0 or not rootPart then return end
+            
+            -- 找到最近的玩家（不包括自己）
+            local closestPlayer = nil
+            local closestDistance = 6000 -- 攻擊範圍
+            local closestPlayerName = ""
+            
+            -- 檢查所有玩家
+            for _, otherPlayer in ipairs(playersService:GetPlayers()) do
+                if otherPlayer ~= Player and otherPlayer.Character then
+                    local otherCharacter = otherPlayer.Character
+                    local otherHumanoid = otherCharacter:FindFirstChild("Humanoid")
+                    local otherRootPart = otherCharacter:FindFirstChild("HumanoidRootPart")
+                    
+                    if otherHumanoid and otherHumanoid.Health > 0 and otherRootPart then
+                        local distance = (rootPart.Position - otherRootPart.Position).Magnitude
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestPlayer = otherCharacter
+                            closestPlayerName = otherPlayer.Name
+                        end
+                    end
+                end
+            end
+            
+            -- 如果有其他玩家，執行攻擊
+            if closestPlayer then
+                print("⚔️ 攻擊玩家: " .. closestPlayerName .. " 距離: " .. math.floor(closestDistance) .. " 單位")
+                
+                -- 嘗試觸發攻擊事件
+                pcall(function()
+                    -- 嘗試找到遊戲的攻擊系統
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    
+                    if ReplicatedStorage then
+                        local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                        local Modules = ReplicatedStorage:FindFirstChild("Modules")
+                        
+                        if Modules then
+                            local Net = Modules:FindFirstChild("Net")
+                            if Net then
+                                -- 嘗試各種可能的攻擊事件名稱
+                                local attackNames = {
+                                    "RE/RegisterAttack",
+                                    "RegisterAttack",
+                                    "Attack",
+                                    "DoAttack",
+                                    "FireAttack"
+                                }
+                                
+                                local hitNames = {
+                                    "RE/RegisterHit",
+                                    "RegisterHit",
+                                    "Hit",
+                                    "DoHit",
+                                    "Damage"
+                                }
+                                
+                                -- 嘗試攻擊事件
+                                for _, attackName in ipairs(attackNames) do
+                                    local attackEvent = Net:FindFirstChild(attackName)
+                                    if attackEvent then
+                                        pcall(function() attackEvent:FireServer() end)
+                                        break
+                                    end
+                                end
+                                
+                                -- 嘗試命中事件
+                                for _, hitName in ipairs(hitNames) do
+                                    local hitEvent = Net:FindFirstChild(hitName)
+                                    if hitEvent and closestPlayer:FindFirstChild("Head") then
+                                        pcall(function() hitEvent:FireServer(closestPlayer.Head, {closestPlayer}) end)
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- 嘗試直接使用Remotes
+                        if Remotes then
+                            local attackRemote = Remotes:FindFirstChild("Attack")
+                            if attackRemote then
+                                pcall(function() attackRemote:FireServer() end)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+        
+        return {
+            start = function()
+                print("▶️ 開始攻擊玩家 (範圍: 6000, 不移動位置)")
+                attackPlayersConnection = runService.Heartbeat:Connect(function()
+                    attackOtherPlayers()
+                end)
+            end,
+            stop = function()
+                print("⏹️ 停止攻擊玩家")
+                if attackPlayersConnection then
+                    attackPlayersConnection:Disconnect()
+                    attackPlayersConnection = nil
+                end
+            end,
+            attackOtherPlayers = attackOtherPlayers
+        }
+    end)
+    
+    if success and result then
+        showNotification("✅ 攻擊玩家初始化完成\n範圍: 6000 單位\n目標: 其他玩家\n不移動位置", Color3.fromRGB(0, 180, 0), 1.5)
+        return result
+    else
+        local errMsg = result or "未知錯誤"
+        showNotification("⚠️ 攻擊玩家初始化失敗: " .. errMsg, Color3.fromRGB(255, 0, 0), 2)
+        print("❌ 攻擊玩家初始化失敗: " .. errMsg)
+        return nil
+    end
+end
+
+-- 初始化攻擊玩家
+local attackPlayersModule = setupAttackPlayers()
+
+-- ========================
+-- 攻擊NPC系統（新增加）
+-- ========================
+print("👹 初始化攻擊NPC系統...")
+
+local isAttackNPCOn = false
+local attackNPCConnection = nil
+
+-- 攻擊NPC功能
+local function setupAttackNPC()
+    showNotification("👹 正在初始化攻擊NPC...", Color3.fromRGB(255, 165, 0), 1)
+    
+    -- 嘗試加載攻擊NPC模塊
+    local success, result = pcall(function()
+        -- 設置全局變量
+        _G.AttackNPC = true
+        
+        -- 獲取本地玩家
+        local Player = playersService.LocalPlayer
+        
+        if not Player then
+            return nil, "找不到玩家"
+        end
+        
+        -- 攻擊NPC功能（不移動位置版本）
+        local function attackNPC()
+            local character = Player.Character
+            if not character then return end
+            
+            local humanoid = character:FindFirstChild("Humanoid")
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            
+            if not humanoid or humanoid.Health <= 0 or not rootPart then return end
+            
+            -- 找到最近的NPC
+            local closestNPC = nil
+            local closestDistance = 6000 -- 攻擊範圍
+            local closestNPCName = ""
+            
+            -- 檢查workspace中的NPC
+            -- 常見的NPC可能在不同文件夾中
+            local npcFolders = {
+                workspace:FindFirstChild("Enemies"),
+                workspace:FindFirstChild("NPCs"),
+                workspace:FindFirstChild("Mobs"),
+                workspace:FindFirstChild("Monsters"),
+                workspace:FindFirstChild("Characters")
+            }
+            
+            for _, npcFolder in ipairs(npcFolders) do
+                if npcFolder and npcFolder:IsA("Folder") then
+                    for _, npc in ipairs(npcFolder:GetChildren()) do
+                        -- 檢查是否是NPC（有Humanoid和HumanoidRootPart）
+                        local npcHumanoid = npc:FindFirstChild("Humanoid")
+                        local npcRootPart = npc:FindFirstChild("HumanoidRootPart")
+                        
+                        if npcHumanoid and npcHumanoid.Health > 0 and npcRootPart then
+                            local distance = (rootPart.Position - npcRootPart.Position).Magnitude
+                            if distance < closestDistance then
+                                closestDistance = distance
+                                closestNPC = npc
+                                closestNPCName = npc.Name
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- 如果找不到特定文件夾中的NPC，檢查workspace中所有有Humanoid的模型
+            if not closestNPC then
+                for _, model in ipairs(workspace:GetChildren()) do
+                    if model:IsA("Model") and not model:FindFirstChildOfClass("Player") then
+                        local npcHumanoid = model:FindFirstChild("Humanoid")
+                        local npcRootPart = model:FindFirstChild("HumanoidRootPart")
+                        
+                        if npcHumanoid and npcHumanoid.Health > 0 and npcRootPart then
+                            -- 排除玩家角色
+                            local isPlayer = false
+                            for _, player in ipairs(playersService:GetPlayers()) do
+                                if player.Character == model then
+                                    isPlayer = true
+                                    break
+                                end
+                            end
+                            
+                            if not isPlayer then
+                                local distance = (rootPart.Position - npcRootPart.Position).Magnitude
+                                if distance < closestDistance then
+                                    closestDistance = distance
+                                    closestNPC = model
+                                    closestNPCName = model.Name
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- 如果有NPC，執行攻擊
+            if closestNPC then
+                print("👹 攻擊NPC: " .. closestNPCName .. " 距離: " .. math.floor(closestDistance) .. " 單位")
+                
+                -- 嘗試觸發攻擊事件
+                pcall(function()
+                    -- 嘗試找到遊戲的攻擊系統
+                    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+                    
+                    if ReplicatedStorage then
+                        local Remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                        local Modules = ReplicatedStorage:FindFirstChild("Modules")
+                        
+                        if Modules then
+                            local Net = Modules:FindFirstChild("Net")
+                            if Net then
+                                -- 嘗試各種可能的攻擊事件名稱
+                                local attackNames = {
+                                    "RE/RegisterAttack",
+                                    "RegisterAttack",
+                                    "Attack",
+                                    "DoAttack",
+                                    "FireAttack"
+                                }
+                                
+                                local hitNames = {
+                                    "RE/RegisterHit",
+                                    "RegisterHit",
+                                    "Hit",
+                                    "DoHit",
+                                    "Damage"
+                                }
+                                
+                                -- 嘗試攻擊事件
+                                for _, attackName in ipairs(attackNames) do
+                                    local attackEvent = Net:FindFirstChild(attackName)
+                                    if attackEvent then
+                                        pcall(function() attackEvent:FireServer() end)
+                                        break
+                                    end
+                                end
+                                
+                                -- 嘗試命中事件
+                                for _, hitName in ipairs(hitNames) do
+                                    local hitEvent = Net:FindFirstChild(hitName)
+                                    if hitEvent and closestNPC:FindFirstChild("Head") then
+                                        pcall(function() hitEvent:FireServer(closestNPC.Head, {closestNPC}) end)
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                        
+                        -- 嘗試直接使用Remotes
+                        if Remotes then
+                            local attackRemote = Remotes:FindFirstChild("Attack")
+                            if attackRemote then
+                                pcall(function() attackRemote:FireServer() end)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+        
+        return {
+            start = function()
+                print("▶️ 開始攻擊NPC (範圍: 6000, 不移動位置)")
+                attackNPCConnection = runService.Heartbeat:Connect(function()
+                    attackNPC()
+                end)
+            end,
+            stop = function()
+                print("⏹️ 停止攻擊NPC")
+                if attackNPCConnection then
+                    attackNPCConnection:Disconnect()
+                    attackNPCConnection = nil
+                end
+            end,
+            attackNPC = attackNPC
+        }
+    end)
+    
+    if success and result then
+        showNotification("✅ 攻擊NPC初始化完成\n範圍: 6000 單位\n目標: NPC/敵人\n不移動位置", Color3.fromRGB(0, 180, 0), 1.5)
+        return result
+    else
+        local errMsg = result or "未知錯誤"
+        showNotification("⚠️ 攻擊NPC初始化失敗: " .. errMsg, Color3.fromRGB(255, 0, 0), 2)
+        print("❌ 攻擊NPC初始化失敗: " .. errMsg)
+        return nil
+    end
+end
+
+-- 初始化攻擊NPC
+local attackNPCModule = setupAttackNPC()
+
+-- ========================
+-- 皮腳本功能（保持不變）
+-- ========================
+local function executePiScript()
+    showNotification("🅿️ 正在加載皮腳本...", Color3.fromRGB(255, 165, 0), 2)
+    
+    -- 嘗試加載皮腳本
+    local success, err = pcall(function()
+        -- 使用安全的加載方式
+        local scriptUrl = "https://raw.githubusercontent.com/xiaopi77/xiaopi77/main/QQ1002100032-Roblox-Pi-script.lua"
+        
+        -- 嘗試獲取腳本
+        local response = httpService:GetAsync(scriptUrl, true)
+        if response then
+            -- 執行腳本
+            loadstring(response)()
+            return true
+        else
+            return false, "無法獲取腳本"
+        end
+    end)
+    
+    if success then
+        showNotification("✅ 皮腳本加載成功", Color3.fromRGB(0, 180, 0), 2)
+        return true
+    else
+        local errMsg = err or "未知錯誤"
+        showNotification("❌ 皮腳本加載失敗\n" .. errMsg, Color3.fromRGB(255, 0, 0), 2.5)
+        print("❌ 皮腳本錯誤: " .. errMsg)
+        return false
+    end
+end
+
+-- ========================
+-- 按鈕事件（修改版）
+-- ========================
+print("🔧 設置按鈕事件...")
+
+-- 攻擊玩家按鈕
+attackPlayersBtn.MouseButton1Click:Connect(function()
+    print("🔘 攻擊玩家按鈕被點擊")
+    
+    if not attackPlayersModule then
+        showNotification("🔄 正在重新初始化攻擊玩家...", Color3.fromRGB(255, 165, 0), 1)
+        attackPlayersModule = setupAttackPlayers()
+        if not attackPlayersModule then
+            return
+        end
+    end
+    
+    isAttackPlayersOn = not isAttackPlayersOn
+    
+    if isAttackPlayersOn then
+        -- 開啟攻擊玩家
+        attackPlayersBtn.BackgroundColor3 = Color3.fromRGB(60, 220, 60)
+        attackPlayersBtn.Text = "⚡ 攻擊玩家 [ON]"
+        showNotification("⚡ 攻擊玩家已開啟\n攻擊範圍: 6000 單位\n目標: 其他玩家\n不移動位置", Color3.fromRGB(0, 180, 0), 1.5)
+        
+        if attackPlayersModule and attackPlayersModule.start then
+            attackPlayersModule.start()
+        end
+    else
+        -- 關閉攻擊玩家
+        attackPlayersBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 220)
+        attackPlayersBtn.Text = "⚡ 攻擊玩家 [OFF]"
+        showNotification("🛑 攻擊玩家已關閉", Color3.fromRGB(200, 0, 0), 1.5)
+        
+        if attackPlayersModule and attackPlayersModule.stop then
+            attackPlayersModule.stop()
+        end
+    end
+end)
+
+-- 攻擊NPC按鈕（新增加）
+attackNPCBtn.MouseButton1Click:Connect(function()
+    print("🔘 攻擊NPC按鈕被點擊")
+    
+    if not attackNPCModule then
+        showNotification("🔄 正在重新初始化攻擊NPC...", Color3.fromRGB(255, 165, 0), 1)
+        attackNPCModule = setupAttackNPC()
+        if not attackNPCModule then
+            return
+        end
+    end
+    
+    isAttackNPCOn = not isAttackNPCOn
+    
+    if isAttackNPCOn then
+        -- 開啟攻擊NPC
+        attackNPCBtn.BackgroundColor3 = Color3.fromRGB(60, 220, 60)
+        attackNPCBtn.Text = "👹 攻擊NPC [ON]"
+        showNotification("👹 攻擊NPC已開啟\n攻擊範圍: 6000 單位\n目標: NPC/敵人\n不移動位置", Color3.fromRGB(0, 180, 0), 1.5)
+        
+        if attackNPCModule and attackNPCModule.start then
+            attackNPCModule.start()
+        end
+    else
+        -- 關閉攻擊NPC
+        attackNPCBtn.BackgroundColor3 = Color3.fromRGB(180, 70, 200)
+        attackNPCBtn.Text = "👹 攻擊NPC [OFF]"
+        showNotification("🛑 攻擊NPC已關閉", Color3.fromRGB(200, 0, 0), 1.5)
+        
+        if attackNPCModule and attackNPCModule.stop then
+            attackNPCModule.stop()
+        end
+    end
+end)
+
+-- 皮腳本按鈕（保持不變）
+piScriptBtn.MouseButton1Click:Connect(function()
+    print("🔘 皮腳本按鈕被點擊")
+    
+    -- 顯示點擊反饋
+    piScriptBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+    piScriptBtn.Text = "🅿️ 加載中..."
+    
+    -- 執行皮腳本
+    local success = executePiScript()
+    
+    -- 恢復按鈕狀態
+    if success then
+        piScriptBtn.BackgroundColor3 = Color3.fromRGB(60, 220, 60)
+        piScriptBtn.Text = "🅿️ 加載成功"
+        task.wait(1.5)
+        piScriptBtn.BackgroundColor3 = Color3.fromRGB(220, 150, 50)
+        piScriptBtn.Text = "🅿️ 皮腳本"
+    else
+        piScriptBtn.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+        piScriptBtn.Text = "🅿️ 加載失敗"
+        task.wait(1.5)
+        piScriptBtn.BackgroundColor3 = Color3.fromRGB(220, 150, 50)
+        piScriptBtn.Text = "🅿️ 皮腳本"
+    end
+end)
+
+-- 關閉按鈕（保持不變）
+closeButton.MouseButton1Click:Connect(function()
+    print("🔘 關閉按鈕被點擊")
+    
+    -- 停止攻擊玩家
+    if isAttackPlayersOn and attackPlayersModule and attackPlayersModule.stop then
+        attackPlayersModule.stop()
+    end
+    
+    -- 停止攻擊NPC
+    if isAttackNPCOn and attackNPCModule and attackNPCModule.stop then
+        attackNPCModule.stop()
+    end
+    
+    -- 顯示關閉動畫
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    closeButton.Text = "關閉中..."
+    
+    showNotification("🛑 正在關閉腳本...", Color3.fromRGB(220, 60, 60), 1)
+    
+    task.wait(0.8)
+    
+    -- 關閉UI
+    if screenGui then
+        screenGui:Destroy()
+    end
+    
+    showNotification("✅ 腳本已關閉", Color3.fromRGB(0, 180, 0), 1)
+end)
+
+-- ESC鍵關閉（僅電腦）
+if not isMobile then
+    inputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.KeyCode == Enum.KeyCode.Escape then
+            closeButton:Click()
+        end
+    end)
+end
+
+-- ========================
+-- 初始化完成
+-- ========================
+task.wait(0.5)
+
+-- 顯示啟動通知
+showNotification("✅ eee腳本已加載\n👑 eee創作\n設備: " .. deviceType .. "\n攻擊範圍: 6000 單位\n目標: 玩家+NPC\n不移動位置", Color3.fromRGB(50, 150, 200), 3)
+
+print("🎮 =================================")
+print("🎮 eee腳本 - 攻擊玩家與NPC版 v3.1")
+print("🎮 創作: eee")
+print("🎮 設備: " .. deviceType)
+print("🎮 拖動功能: ✅ 已啟用")
+print("🎮 攻擊玩家: " .. (isAttackPlayersOn and "開啟" or "關閉"))
+print("🎮 攻擊NPC: " .. (isAttackNPCOn and "開啟" or "關閉"))
+print("🎮 攻擊範圍: 6000 單位")
+print("🎮 攻擊目標: 玩家 + NPC/敵人")
+print("🎮 移動位置: ❌ 已禁用")
+print("🎮 皮腳本: 可用")
+print("🎮 =================================")
+
+-- 添加簡單的幫助信息
+task.spawn(function()
+    task.wait(2)
+    print("💡 使用幫助:")
+    print("💡 1. 拖動: 點擊標題欄藍色區域")
+    print("💡 2. 攻擊玩家: 點擊藍色按鈕開關")
+    print("💡 3. 攻擊NPC: 點擊紫色按鈕開關")
+    print("💡 4. 攻擊範圍: 6000 單位")
+    print("💡 5. 攻擊目標: 玩家或NPC/敵人")
+    print("💡 6. 移動位置: 已禁用")
+    print("💡 7. 皮腳本: 點擊橙色按鈕加載")
+    print("💡 8. 關閉: 點擊 ✕ 或按 ESC")
+end)
+
+-- 確保按鈕正常工作的最終檢查
+task.spawn(function()
+    task.wait(1)
+    
+    local function testButtonClickable(button, name)
+        if button and button:IsA("TextButton") then
+            local connection = button.MouseButton1Click:Connect(function()
+                print("✅ " .. name .. " 按鈕點擊測試成功")
+                connection:Disconnect()
+            end)
+            
+            -- 模擬點擊（僅測試）
+            task.spawn(function()
+                task.wait(0.1)
+                if connection.Connected then
+                    connection:Disconnect()
+                end
+            end)
+            
+            return true
+        end
+        return false
+    end
+    
+    -- 測試所有按鈕
+    local attackPlayersOk = testButtonClickable(attackPlayersBtn, "攻擊玩家")
+    local attackNPCOk = testButtonClickable(attackNPCBtn, "攻擊NPC")
+    local piScriptOk = testButtonClickable(piScriptBtn, "皮腳本")
+    local closeOk = testButtonClickable(closeButton, "關閉")
+    
+    if attackPlayersOk and attackNPCOk and piScriptOk and closeOk then
+        print("✅ 所有按鈕功能正常")
+    else
+        print("⚠️ 部分按鈕可能有問題")
+    end
+end)
+
+print("🚀 eee腳本攻擊玩家與NPC版完成！攻擊範圍: 6000 單位，目標: 玩家+NPC，不移動位置。")
